@@ -1,4 +1,3 @@
-import torch
 import torch.nn as nn
 
 
@@ -18,13 +17,22 @@ class PINN(nn.Module):
         # Output layer
         self.output_layer = nn.Linear(neurons, 1)
 
+        #set initial weights
+        # self.apply(self._init_weights)
+
         #Activation function
         self.activation = nn.Tanh()
+
+    def _init_weights(self,m):
+        if isinstance(m, nn.Linear):
+            # This is the "Xavier Normal" magic line
+            nn.init.xavier_normal_(m.weight)
+            # Set biases to zero to start clean
+            nn.init.zeros_(m.bias)
 
     def forward(self, x):
         for layer in self.layers:
             x = self.activation(layer(x))
         return self.output_layer(x)
     
-device = "cuda" if torch.cuda.is_available() else "cpu"
 
