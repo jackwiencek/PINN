@@ -1,3 +1,4 @@
+import datetime
 import os
 import time
 import torch
@@ -15,8 +16,9 @@ def main():
     T = 1.0
     alpha = 1.0
     epochs = 10000
+    model_config = {"input_dim": 2, "hidden_layers": 6, "neurons": 40}
 
-    model = PINN(input_dim=2, hidden_layers=6, neurons=40).to(device)
+    model = PINN(**model_config).to(device)
     optimizer = torch.optim.Adam(model.parameters(), lr=1e-3)
     scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=epochs)
 
@@ -106,6 +108,30 @@ def main():
 
     print(f"max abs error: {max_err:.4e}")
     print(f"L2 error:      {l2_err:.4e}")
+
+    # --- save run bundle (loss lists + model + metadata) ---
+    os.makedirs("runs", exist_ok=True)
+    run_id = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+    run_path = os.path.join("runs", f"run_{run_id}.pt")
+    torch.save(
+        {
+            "run_id": run_id,
+            "total_loss": total_loss_list,
+            "pde_loss": col_loss_list,
+            "ic_loss": ic_loss_list,
+            "bc_loss": bc_loss_list,
+            "model_state": model.state_dict(),
+            "model_config": model_config,
+            "L": L,
+            "T": T,
+            "alpha": alpha,
+            "epochs": epochs,
+            "max_abs_error": max_err,
+            "l2_error": l2_err,
+        },
+        run_path,
+    )
+    print(f"run saved: {run_path}")
 
 
 if __name__ == "__main__":
