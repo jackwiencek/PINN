@@ -5,6 +5,7 @@ import sys
 import torch
 
 from model import PINN
+from eval import evaluate
 
 
 def load_run(run_path):
@@ -72,25 +73,15 @@ def main():
     # --- Rebuild model for solution heatmaps ---
     model = PINN(**bundle["model_config"])
     model.load_state_dict(bundle["model_state"])
-    model.eval()
 
     L = bundle["L"]
     T = bundle["T"]
     alpha = bundle["alpha"]
 
-    with torch.no_grad():
-        xs = torch.linspace(0.0, L, 200)
-        ts = torch.linspace(0.0, T, 200)
-        X, Tm = torch.meshgrid(xs, ts, indexing="ij")
-        x_flat = X.reshape(-1, 1)
-        t_flat = Tm.reshape(-1, 1)
-
-        u_pred = model(x_flat, t_flat).reshape(200, 200).numpy()
-        k = torch.pi / L
-        u_exact = (
-            torch.sin(k * x_flat) * torch.exp(-(k ** 2) * alpha * t_flat)
-        ).reshape(200, 200).numpy()
-
+    grid = 200
+    result = evaluate(model, L, T, alpha, device="cpu", grid=grid)
+    u_pred = result["u_pred"].reshape(grid, grid).numpy()
+    u_exact = result["u_exact"].reshape(grid, grid).numpy()
     err = np.abs(u_pred - u_exact)
 
     # --- Prediction heatmap ---

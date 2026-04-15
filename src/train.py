@@ -6,6 +6,7 @@ import torch.nn as nn
 from model import PINN
 from sampling import sample_collocation, sample_ic, sample_bc
 from physics import compute_loss
+from eval import evaluate
 
 
 def main():
@@ -88,24 +89,9 @@ def main():
     print(f"training done in {total_time:.1f}s ({total_time/60:.2f} min)")
 
     # --- analytical evaluation ---
-    # Exact solution for 1D heat on [0,L] with u(x,0)=sin(pi x/L), zero Dirichlet BCs:
-    #   u(x,t) = sin(pi x / L) * exp(-(pi/L)^2 * alpha * t)
-    model.eval()
-    with torch.no_grad():
-        xs = torch.linspace(0.0, L, 100, device=device)
-        ts = torch.linspace(0.0, T, 100, device=device)
-        X, Tm = torch.meshgrid(xs, ts, indexing="ij")
-        x_flat = X.reshape(-1, 1)
-        t_flat = Tm.reshape(-1, 1)
-
-        u_pred = model(x_flat, t_flat)
-        k = torch.pi / L
-        u_exact = torch.sin(k * x_flat) * torch.exp(-(k ** 2) * alpha * t_flat)
-
-        err = (u_pred - u_exact).abs()
-        max_err = err.max().item()
-        l2_err = ((u_pred - u_exact) ** 2).mean().sqrt().item()
-
+    result = evaluate(model, L, T, alpha, device=device, grid=100)
+    max_err = result["max_abs_error"]
+    l2_err = result["l2_error"]
     print(f"max abs error: {max_err:.4e}")
     print(f"L2 error:      {l2_err:.4e}")
 
