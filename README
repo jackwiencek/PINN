@@ -2,3 +2,25 @@ Physics Informed Neural Network
 
 Forward Problem
 Solving the 1D Heat Equation
+
+Possible File Structure:
+pinn/
+├── README.md
+├── requirements.txt
+├── src/
+│   ├── model.py               # PINN class (nn.Module)
+│   ├── physics.py             # PDE residual, BC/IC functions
+│   ├── train.py               # training loop, Adam + L-BFGS
+│   ├── sampling.py            # collocation point generation
+│   └── utils.py               # device setup, seeding, plotting helpers
+├── experiments/
+│   ├── heat_1d.py             # one script per PDE/run
+│   ├── oscillator.py
+│   └── configs/               # YAML or dict configs per run
+├── results/
+│   ├── checkpoints/           # saved model weights (.pt files)
+│   └── figures/               # generated plots
+├── notebooks/
+│   └── explore.ipynb          # sanity checks, quick viz
+└── cpp/                       # later, for the C++ port
+    └── ...
