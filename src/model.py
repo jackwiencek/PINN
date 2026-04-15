@@ -1,3 +1,4 @@
+import torch
 import torch.nn as nn
 
 
@@ -30,9 +31,10 @@ class PINN(nn.Module):
             # Set biases to zero to start clean
             nn.init.zeros_(m.bias)
 
-    def forward(self, x):
+    def forward(self, x, t):
+        xt = torch.cat([x, t], dim=1)   # shape (N, 2)
         for layer in self.layers:
-            x = self.activation(layer(x))
-        return self.output_layer(x)
+            xt = self.activation(layer(xt))
+        return self.output_layer(xt)
     
 
