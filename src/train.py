@@ -56,6 +56,7 @@ def main():
         )
 
         total_loss.backward()
+        torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=1.0)
         optimizer.step()
         scheduler.step()
 
@@ -75,6 +76,7 @@ def main():
             )
 
         if (epoch + 1) % 500 == 0:
+            x_f, t_f = sample_collocation(5000, L, T, device)
             torch.save(
                 {
                     "model": model.state_dict(),
