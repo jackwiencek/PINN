@@ -19,7 +19,7 @@ class PINN(nn.Module):
         self.output_layer = nn.Linear(neurons, 1)
 
         #set initial weights
-        # self.apply(self._init_weights)
+        self.apply(self._init_weights)
 
         #Activation function
         self.activation = nn.Tanh()

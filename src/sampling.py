@@ -5,7 +5,9 @@ def sample_collocation(N, L, T, device):
     t = (torch.rand(N, 1, device=device) * T).requires_grad_(True)
     return x, t
 
-def sample_ic(N, L, device, f=lambda x: torch.sin(torch.pi * x)):
+def sample_ic(N, L, device, f=None):
+    if f is None:
+        f = lambda x: torch.sin(torch.pi * x / L)
     x = torch.rand(N, 1, device=device) * L
     t = torch.zeros(N, 1, device=device)
     return x, t, f(x)
