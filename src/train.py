@@ -2,10 +2,9 @@ import datetime
 import os
 import time
 import torch
-import torch.nn as nn
 from model import PINN
 from sampling import sample_collocation, sample_ic, sample_bc
-from physics import compute_loss
+from physics import HeatEquation1D, compute_loss
 from eval import evaluate
 
 
@@ -13,9 +12,7 @@ def main():
     device = "cuda" if torch.cuda.is_available() else "cpu"
     print(f"device: {device}")
 
-    L = 1.0
-    T = 1.0
-    alpha = 1.0
+    pde = HeatEquation1D(L=1.0, T=1.0, alpha=1.0)
     epochs = 10000
     model_config = {"input_dim": 2, "hidden_layers": 6, "neurons": 40}
 
@@ -25,9 +22,9 @@ def main():
 
     # All points, requires_grad = True for collocation
     # fixed for now
-    x_f, t_f = sample_collocation(5000, L, T, device)
-    x_ic, t_ic, u_ic = sample_ic(200, L, device)
-    x_bc_left, x_bc_right, t_bc, u_bc_left, u_bc_right = sample_bc(200, L, T, device)
+    x_f, t_f = sample_collocation(5000, pde, device)
+    x_ic, t_ic, _ = sample_ic(200, pde, device)
+    t_bc = sample_bc(200, pde, device)
 
     total_loss_list = []
     col_loss_list = []
@@ -51,8 +48,7 @@ def main():
         optimizer.zero_grad()
 
         total_loss, (l_pde, l_ic, l_bc) = compute_loss(
-            model, x_f, t_f, x_ic, t_ic, u_ic,
-            x_bc_left, x_bc_right, t_bc, u_bc_left, u_bc_right, alpha
+            model, pde, x_f, t_f, x_ic, t_ic, None, t_bc
         )
 
         total_loss.backward()
@@ -76,7 +72,7 @@ def main():
             )
 
         if (epoch + 1) % 500 == 0:
-            x_f, t_f = sample_collocation(5000, L, T, device)
+            x_f, t_f = sample_collocation(5000, pde, device)
             torch.save(
                 {
                     "model": model.state_dict(),
@@ -91,11 +87,15 @@ def main():
     print(f"training done in {total_time:.1f}s ({total_time/60:.2f} min)")
 
     # --- analytical evaluation ---
-    result = evaluate(model, L, T, alpha, device=device, grid=100)
-    max_err = result["max_abs_error"]
-    l2_err = result["l2_error"]
-    print(f"max abs error: {max_err:.4e}")
-    print(f"L2 error:      {l2_err:.4e}")
+    result = evaluate(model, pde, device=device, grid=100)
+    if "max_abs_error" in result:
+        max_err = result["max_abs_error"]
+        l2_err = result["l2_error"]
+        print(f"max abs error: {max_err:.4e}")
+        print(f"L2 error:      {l2_err:.4e}")
+    else:
+        max_err = None
+        l2_err = None
 
     # --- save run bundle (loss lists + model + metadata) ---
     os.makedirs("runs", exist_ok=True)
@@ -110,9 +110,12 @@ def main():
             "bc_loss": bc_loss_list,
             "model_state": model.state_dict(),
             "model_config": model_config,
-            "L": L,
-            "T": T,
-            "alpha": alpha,
+            "pde_class": type(pde).__name__,
+            "pde_params": {"L": pde.x_max, "T": pde.t_max, "alpha": pde.alpha},
+            # backward compat keys
+            "L": pde.x_max,
+            "T": pde.t_max,
+            "alpha": pde.alpha,
             "epochs": epochs,
             "max_abs_error": max_err,
             "l2_error": l2_err,

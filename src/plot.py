@@ -5,7 +5,7 @@ import sys
 import torch
 
 from model import PINN
-from eval import evaluate
+from eval import evaluate, build_pde_from_bundle
 
 
 def load_run(run_path):
@@ -49,14 +49,14 @@ def main():
 
     # --- Loss curves ---
     total = bundle["total_loss"]
-    pde = bundle["pde_loss"]
+    pde_loss = bundle["pde_loss"]
     ic = bundle["ic_loss"]
     bc = bundle["bc_loss"]
     epochs_x = range(len(total))
 
     fig, ax = plt.subplots(figsize=(8, 5))
     ax.semilogy(epochs_x, total, label="total", linewidth=1.5)
-    ax.semilogy(epochs_x, pde, label="PDE", alpha=0.7)
+    ax.semilogy(epochs_x, pde_loss, label="PDE", alpha=0.7)
     ax.semilogy(epochs_x, ic, label="IC", alpha=0.7)
     ax.semilogy(epochs_x, bc, label="BC", alpha=0.7)
     ax.set_xlabel("epoch")
@@ -74,22 +74,20 @@ def main():
     model = PINN(**bundle["model_config"])
     model.load_state_dict(bundle["model_state"])
 
-    L = bundle["L"]
-    T = bundle["T"]
-    alpha = bundle["alpha"]
-
+    pde = build_pde_from_bundle(bundle)
     grid = 200
-    result = evaluate(model, L, T, alpha, device="cpu", grid=grid)
+    result = evaluate(model, pde, device="cpu", grid=grid)
     u_pred = result["u_pred"].reshape(grid, grid).numpy()
-    u_exact = result["u_exact"].reshape(grid, grid).numpy()
-    err = np.abs(u_pred - u_exact)
+
+    L = pde.x_max - pde.x_min
+    T = pde.t_max
 
     # --- Prediction heatmap ---
     fig, ax = plt.subplots(figsize=(7, 5))
     im = ax.imshow(
         u_pred.T,
         origin="lower",
-        extent=[0, L, 0, T],
+        extent=[pde.x_min, pde.x_max, 0, T],
         aspect="auto",
         cmap="viridis",
     )
@@ -103,30 +101,36 @@ def main():
     plt.close(fig)
     print(f"saved {pred_path}")
 
-    # --- Error heatmap (log scale) ---
-    err_floor = max(float(err.min()), 1e-12)
-    err_ceiling = float(err.max()) + 1e-12
-    fig, ax = plt.subplots(figsize=(7, 5))
-    im = ax.imshow(
-        err.T,
-        origin="lower",
-        extent=[0, L, 0, T],
-        aspect="auto",
-        cmap="magma",
-        norm=LogNorm(vmin=err_floor, vmax=err_ceiling),
-    )
-    ax.set_xlabel("x")
-    ax.set_ylabel("t")
-    ax.set_title(f"|u_pred - u_exact| — {run_id}")
-    fig.colorbar(im, ax=ax, label="abs error (log)")
-    fig.tight_layout()
-    err_path = os.path.join("plots", f"heat_error_{run_id}.png")
-    fig.savefig(err_path, dpi=150)
-    plt.close(fig)
-    print(f"saved {err_path}")
+    # --- Error heatmap (only if analytical solution exists) ---
+    if "u_exact" in result:
+        u_exact = result["u_exact"].reshape(grid, grid).numpy()
+        err = np.abs(u_pred - u_exact)
 
-    print(f"max abs error: {err.max():.4e}")
-    print(f"L2 error:      {np.sqrt((err ** 2).mean()):.4e}")
+        err_floor = max(float(err.min()), 1e-12)
+        err_ceiling = float(err.max()) + 1e-12
+        fig, ax = plt.subplots(figsize=(7, 5))
+        im = ax.imshow(
+            err.T,
+            origin="lower",
+            extent=[pde.x_min, pde.x_max, 0, T],
+            aspect="auto",
+            cmap="magma",
+            norm=LogNorm(vmin=err_floor, vmax=err_ceiling),
+        )
+        ax.set_xlabel("x")
+        ax.set_ylabel("t")
+        ax.set_title(f"|u_pred - u_exact| — {run_id}")
+        fig.colorbar(im, ax=ax, label="abs error (log)")
+        fig.tight_layout()
+        err_path = os.path.join("plots", f"heat_error_{run_id}.png")
+        fig.savefig(err_path, dpi=150)
+        plt.close(fig)
+        print(f"saved {err_path}")
+
+        print(f"max abs error: {err.max():.4e}")
+        print(f"L2 error:      {np.sqrt((err ** 2).mean()):.4e}")
+    else:
+        print("no analytical solution — error heatmap skipped")
 
 
 if __name__ == "__main__":
