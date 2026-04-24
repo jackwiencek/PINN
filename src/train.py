@@ -16,6 +16,14 @@ def main():
     epochs = 10000
     model_config = {"input_dim": 2, "hidden_layers": 6, "neurons": 40}
 
+    # L-BFGS fine-tune phase (runs after Adam)
+    lbfgs_epochs = 500
+    lbfgs_lr = 1.0
+    lbfgs_max_iter = 20
+    lbfgs_history_size = 50
+    lbfgs_tol_grad = 1e-7
+    lbfgs_tol_change = 1e-9
+
     model = PINN(**model_config).to(device)
     optimizer = torch.optim.Adam(model.parameters(), lr=1e-3)
     scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=epochs)
@@ -31,6 +39,7 @@ def main():
     ic_loss_list = []
     bc_loss_list = []
 
+    # NOTE: ckpt only saved during Adam phase; resume after L-BFGS start unsupported
     ckpt_path = "ckpt.pt"
     start_epoch = 0
     if os.path.exists(ckpt_path):
@@ -52,7 +61,7 @@ def main():
         )
 
         total_loss.backward()
-        torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=1.0)
+        # torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=1.0)
         optimizer.step()
         scheduler.step()
 
@@ -86,6 +95,39 @@ def main():
     total_time = time.time() - t_start
     print(f"training done in {total_time:.1f}s ({total_time/60:.2f} min)")
 
+    # --- L-BFGS fine-tune (full-batch, frozen collocation) ---
+    lbfgs = torch.optim.LBFGS(
+        model.parameters(),
+        lr=lbfgs_lr,
+        max_iter=lbfgs_max_iter,
+        history_size=lbfgs_history_size,
+        tolerance_grad=lbfgs_tol_grad,
+        tolerance_change=lbfgs_tol_change,
+        line_search_fn="strong_wolfe",
+    )
+    _last = {}
+    t_lbfgs = time.time()
+    for lb_epoch in range(lbfgs_epochs):
+        def closure():
+            lbfgs.zero_grad()
+            total, (l_pde, l_ic, l_bc) = compute_loss(
+                model, pde, x_f, t_f, x_ic, t_ic, None, t_bc
+            )
+            total.backward()
+            _last["t"], _last["p"], _last["i"], _last["b"] = total, l_pde, l_ic, l_bc
+            return total
+        lbfgs.step(closure)
+        total_loss_list.append(_last["t"].item())
+        col_loss_list.append(_last["p"].item())
+        ic_loss_list.append(_last["i"].item())
+        bc_loss_list.append(_last["b"].item())
+        if lb_epoch % 10 == 0:
+            print(
+                f"lbfgs {lb_epoch}: total={_last['t'].item():.4e} "
+                f"pde={_last['p'].item():.4e} ic={_last['i'].item():.4e} "
+                f"bc={_last['b'].item():.4e} elapsed={time.time()-t_lbfgs:.1f}s"
+            )
+
     # --- analytical evaluation ---
     result = evaluate(model, pde, device=device, grid=100)
     if "max_abs_error" in result:
@@ -117,6 +159,8 @@ def main():
             "T": pde.t_max,
             "alpha": pde.alpha,
             "epochs": epochs,
+            "adam_epochs": epochs,
+            "lbfgs_epochs": lbfgs_epochs,
             "max_abs_error": max_err,
             "l2_error": l2_err,
         },
