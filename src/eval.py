@@ -5,7 +5,7 @@ import sys
 import torch
 
 from model import PINN
-from physics import HeatEquation1D
+from physics import HeatEquation1D, ViscousBurgers1D
 
 
 def evaluate(model, pde, device="cpu", grid=100):
@@ -59,6 +59,8 @@ def build_pde_from_bundle(bundle):
     if pde_params:
         if pde_class == "HeatEquation1D":
             return HeatEquation1D(**pde_params)
+        elif pde_class == "ViscousBurgers1D":
+            return ViscousBurgers1D(**pde_params)
     # backward compat: old bundles without pde_class
     return HeatEquation1D(
         L=bundle.get("L", 1.0),

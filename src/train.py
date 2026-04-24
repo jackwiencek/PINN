@@ -4,7 +4,7 @@ import time
 import torch
 from model import PINN
 from sampling import sample_collocation, sample_ic, sample_bc
-from physics import HeatEquation1D, compute_loss
+from physics import HeatEquation1D, compute_loss, ViscousBurgers1D
 from eval import evaluate
 
 
@@ -12,7 +12,7 @@ def main():
     device = "cuda" if torch.cuda.is_available() else "cpu"
     print(f"device: {device}")
 
-    pde = HeatEquation1D(L=1.0, T=1.0, alpha=1.0)
+    pde = ViscousBurgers1D()
     epochs = 10000
     model_config = {"input_dim": 2, "hidden_layers": 6, "neurons": 40}
 
@@ -144,26 +144,33 @@ def main():
     run_id = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
     run_path = os.path.join("runs", f"run_{run_id}.pt")
     torch.save(
-        {
-            "run_id": run_id,
-            "total_loss": total_loss_list,
-            "pde_loss": col_loss_list,
-            "ic_loss": ic_loss_list,
-            "bc_loss": bc_loss_list,
-            "model_state": model.state_dict(),
-            "model_config": model_config,
-            "pde_class": type(pde).__name__,
-            "pde_params": {"L": pde.x_max, "T": pde.t_max, "alpha": pde.alpha},
-            # backward compat keys
-            "L": pde.x_max,
-            "T": pde.t_max,
-            "alpha": pde.alpha,
-            "epochs": epochs,
-            "adam_epochs": epochs,
-            "lbfgs_epochs": lbfgs_epochs,
-            "max_abs_error": max_err,
-            "l2_error": l2_err,
+    {
+        "run_id": run_id,
+        "total_loss": total_loss_list,
+        "pde_loss": col_loss_list,
+        "ic_loss": ic_loss_list,
+        "bc_loss": bc_loss_list,
+        "model_state": model.state_dict(),
+        "model_config": model_config,
+        "pde_class": type(pde).__name__,
+        # Updated for Viscous Burgers parameters
+        "pde_params": {
+            "x_min": pde.x_min, 
+            "x_max": pde.x_max, 
+            "T": pde.t_max, 
+            "nu": pde.nu
         },
+        # backward compat keys
+        "x_min": pde.x_min,
+        "x_max": pde.x_max,
+        "T": pde.t_max,
+        "nu": pde.nu,
+        "epochs": epochs,
+        "adam_epochs": epochs,
+        "lbfgs_epochs": lbfgs_epochs,
+        "max_abs_error": max_err,
+        "l2_error": l2_err,
+    },
         run_path,
     )
     print(f"run saved: {run_path}")

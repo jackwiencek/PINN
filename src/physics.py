@@ -52,6 +52,34 @@ class HeatEquation1D(PDEProblem):
         k = torch.pi / self.x_max
         return torch.sin(k * x) * torch.exp(-(k ** 2) * self.alpha * t)
 
+class ViscousBurgers1D(PDEProblem):
+    def __init__(self, x_min=-1.0, x_max=1.0, T=0.99, nu=0.01 / torch.pi):
+        self.x_min = x_min
+        self.x_max = x_max
+        self.t_max = T
+        self.nu = nu
+
+    def residual(self, model, x, t):
+        u = model(x, t)
+        # First order derivatives
+        u_t = torch.autograd.grad(u, t, grad_outputs=torch.ones_like(u), create_graph=True)[0]
+        u_x = torch.autograd.grad(u, x, grad_outputs=torch.ones_like(u), create_graph=True)[0]
+        # Second order derivative
+        u_xx = torch.autograd.grad(u_x, x, grad_outputs=torch.ones_like(u_x), create_graph=True)[0]
+        
+        # Burgers' Equation: u_t + u*u_x - nu*u_xx = 0
+        return u_t + u * u_x - self.nu * u_xx
+
+    def initial_condition(self, x):
+        # Standard benchmark IC: -sin(pi * x)
+        return -torch.sin(torch.pi * x)
+
+    def boundary_conditions(self):
+        # Dirichlet BCs at x = -1 and x = 1
+        return [
+            {"type": "dirichlet", "x": self.x_min, "value": 0.0},
+            {"type": "dirichlet", "x": self.x_max, "value": 0.0},
+        ]
 
 def compute_loss(model, pde, x_f, t_f, x_ic, t_ic, x_bcs, t_bcs, lambdas=(1.0, 1.0, 1.0)):
     # --- PDE residual ---
