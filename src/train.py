@@ -1,3 +1,4 @@
+import csv
 import datetime
 import os
 import time
@@ -23,6 +24,18 @@ def main():
     lbfgs_history_size = 50
     lbfgs_tol_grad = 1e-7
     lbfgs_tol_change = 1e-9
+
+    # --- Performance / cluster config ---
+    NUM_CORES = 1  # set to actual core count before submitting to cluster
+
+    # Generate run_id early so CSV can be named before training completes
+    run_id = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+    os.makedirs("logs", exist_ok=True)
+    perf_csv_path = os.path.join("logs", f"perf_{run_id}.csv")
+    _perf_file = open(perf_csv_path, "w", newline="")
+    _perf_writer = csv.writer(_perf_file)
+    _perf_writer.writerow(["epoch", "phase", "wall_time_s", "epoch_time_s"])
+    perf_log = []
 
     model = PINN(**model_config).to(device)
     optimizer = torch.optim.Adam(model.parameters(), lr=1e-3)
@@ -51,6 +64,7 @@ def main():
         print(f"resumed from epoch {start_epoch}")
 
     t_start = time.time()
+    t_epoch_start = time.time()
 
     # Training Loop
     for epoch in range(start_epoch, epochs):
@@ -70,6 +84,14 @@ def main():
         col_loss_list.append(l_pde.item())
         ic_loss_list.append(l_ic.item())
         bc_loss_list.append(l_bc.item())
+
+        _now = time.time()
+        _epoch_time = _now - t_epoch_start
+        _wall_time = _now - t_start
+        t_epoch_start = _now
+        _perf_writer.writerow([epoch, "adam", round(_wall_time, 6), round(_epoch_time, 6)])
+        perf_log.append({"epoch": epoch, "phase": "adam",
+                         "wall_time_s": _wall_time, "epoch_time_s": _epoch_time})
 
         if epoch % 100 == 0:
             elapsed = time.time() - t_start
@@ -107,6 +129,7 @@ def main():
     )
     _last = {}
     t_lbfgs = time.time()
+    t_lbfgs_step = time.time()
     for lb_epoch in range(lbfgs_epochs):
         def closure():
             lbfgs.zero_grad()
@@ -117,16 +140,30 @@ def main():
             _last["t"], _last["p"], _last["i"], _last["b"] = total, l_pde, l_ic, l_bc
             return total
         lbfgs.step(closure)
+
+        _now = time.time()
+        _step_time = _now - t_lbfgs_step
+        _wall_time = _now - t_lbfgs
+        t_lbfgs_step = _now
+
         total_loss_list.append(_last["t"].item())
         col_loss_list.append(_last["p"].item())
         ic_loss_list.append(_last["i"].item())
         bc_loss_list.append(_last["b"].item())
+
+        _perf_writer.writerow([lb_epoch, "lbfgs", round(_wall_time, 6), round(_step_time, 6)])
+        perf_log.append({"epoch": lb_epoch, "phase": "lbfgs",
+                         "wall_time_s": _wall_time, "epoch_time_s": _step_time})
+
         if lb_epoch % 10 == 0:
             print(
                 f"lbfgs {lb_epoch}: total={_last['t'].item():.4e} "
                 f"pde={_last['p'].item():.4e} ic={_last['i'].item():.4e} "
                 f"bc={_last['b'].item():.4e} elapsed={time.time()-t_lbfgs:.1f}s"
             )
+
+    _perf_file.close()
+    print(f"perf log: {perf_csv_path}")
 
     # --- analytical evaluation ---
     result = evaluate(model, pde, device=device, grid=100)
@@ -141,7 +178,6 @@ def main():
 
     # --- save run bundle (loss lists + model + metadata) ---
     os.makedirs("runs", exist_ok=True)
-    run_id = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
     run_path = os.path.join("runs", f"run_{run_id}.pt")
     torch.save(
     {
@@ -155,9 +191,9 @@ def main():
         "pde_class": type(pde).__name__,
         # Updated for Viscous Burgers parameters
         "pde_params": {
-            "x_min": pde.x_min, 
-            "x_max": pde.x_max, 
-            "T": pde.t_max, 
+            "x_min": pde.x_min,
+            "x_max": pde.x_max,
+            "T": pde.t_max,
             "nu": pde.nu
         },
         # backward compat keys
@@ -170,6 +206,8 @@ def main():
         "lbfgs_epochs": lbfgs_epochs,
         "max_abs_error": max_err,
         "l2_error": l2_err,
+        "perf_log": perf_log,
+        "num_cores": NUM_CORES,
     },
         run_path,
     )

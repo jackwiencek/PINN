@@ -1,4 +1,5 @@
 import argparse
+import csv
 import glob
 import os
 import sys
@@ -24,6 +25,53 @@ def resolve_run_path(arg):
     return candidates[-1]
 
 
+def load_perf_csv(csv_path):
+    """Load perf CSV (Python or C++ generated). Returns list of dicts."""
+    rows = []
+    with open(csv_path, newline="") as f:
+        for row in csv.DictReader(f):
+            rows.append({
+                "epoch":        int(row["epoch"]),
+                "phase":        row["phase"],
+                "wall_time_s":  float(row["wall_time_s"]),
+                "epoch_time_s": float(row["epoch_time_s"]),
+            })
+    return rows
+
+
+def plot_perf_standalone(perf_rows, run_id):
+    """Performance-only plot for C++ (or any) CSV log — no model needed."""
+    import matplotlib.pyplot as plt
+
+    os.makedirs("plots", exist_ok=True)
+    adam_rows  = [r for r in perf_rows if r["phase"] == "adam"]
+    lbfgs_rows = [r for r in perf_rows if r["phase"] == "lbfgs"]
+    adam_n = len(adam_rows)
+
+    fig, ax = plt.subplots(figsize=(8, 4))
+    if adam_rows:
+        ax.plot([r["epoch"] for r in adam_rows],
+                [r["epoch_time_s"] * 1000 for r in adam_rows],
+                color="tab:blue", linewidth=0.8, alpha=0.7, label="Adam (ms/epoch)")
+    if lbfgs_rows:
+        lx = [adam_n + r["epoch"] for r in lbfgs_rows]
+        ax.plot(lx, [r["epoch_time_s"] * 1000 for r in lbfgs_rows],
+                color="tab:green", linewidth=0.8, alpha=0.9, label="L-BFGS (ms/step)")
+        if adam_rows:
+            ax.axvline(adam_n, color="k", linestyle="--", linewidth=0.8, alpha=0.6)
+            ax.axvspan(adam_n, adam_n + len(lbfgs_rows), alpha=0.08, color="tab:green", zorder=0)
+    ax.set_xlabel("step")
+    ax.set_ylabel("time per step (ms)")
+    ax.set_title(f"Performance — {run_id}")
+    ax.legend()
+    ax.grid(True, alpha=0.3)
+    fig.tight_layout()
+    out = os.path.join("plots", f"perf_{run_id}.png")
+    fig.savefig(out, dpi=150)
+    plt.close(fig)
+    print(f"saved {out}")
+
+
 def main():
     parser = argparse.ArgumentParser(description="Plot PINN training run.")
     parser.add_argument(
@@ -32,7 +80,19 @@ def main():
         default=None,
         help="Path to run_*.pt file. Defaults to latest in runs/.",
     )
+    parser.add_argument(
+        "--perf-log",
+        default=None,
+        metavar="CSV",
+        help="Standalone perf_*.csv (e.g. from C++ trainer). Skips model-dependent plots.",
+    )
     args = parser.parse_args()
+
+    if args.perf_log:
+        perf_rows = load_perf_csv(args.perf_log)
+        run_id = os.path.splitext(os.path.basename(args.perf_log))[0].replace("perf_", "")
+        plot_perf_standalone(perf_rows, run_id)
+        return
 
     run_path = resolve_run_path(args.run)
     bundle = load_run(run_path)
@@ -59,7 +119,15 @@ def main():
     lbfgs_epochs = bundle.get("lbfgs_epochs", 0)
     has_lbfgs = lbfgs_epochs > 0 and adam_epochs < len(total)
 
-    fig, ax = plt.subplots(figsize=(8, 5))
+    perf_log = bundle.get("perf_log") or []
+    has_perf = bool(perf_log)
+
+    if has_perf:
+        fig, (ax, ax_perf) = plt.subplots(2, 1, figsize=(8, 8), sharex=True)
+    else:
+        fig, ax = plt.subplots(figsize=(8, 5))
+        ax_perf = None
+
     ax.semilogy(epochs_x, total, label="total", linewidth=1.5)
     ax.semilogy(epochs_x, pde_loss, label="PDE", alpha=0.7)
     ax.semilogy(epochs_x, ic, label="IC", alpha=0.7)
@@ -71,11 +139,31 @@ def main():
         y_text = ymax / (ymax / ymin) ** 0.05
         ax.text(adam_epochs * 0.5, y_text, "Adam", ha="center", va="top", fontsize=9, alpha=0.7)
         ax.text((adam_epochs + len(total)) / 2, y_text, "L-BFGS", ha="center", va="top", fontsize=9, alpha=0.7)
-    ax.set_xlabel("step (Adam epoch | L-BFGS outer step)" if has_lbfgs else "epoch")
+    if ax_perf is None:
+        ax.set_xlabel("step (Adam epoch | L-BFGS outer step)" if has_lbfgs else "epoch")
     ax.set_ylabel("loss (log scale)")
     ax.set_title(f"Loss curves — {run_id}")
     ax.legend()
     ax.grid(True, which="both", alpha=0.3)
+
+    if ax_perf is not None:
+        adam_rows  = [r for r in perf_log if r["phase"] == "adam"]
+        lbfgs_rows = [r for r in perf_log if r["phase"] == "lbfgs"]
+        ax_perf.plot([r["epoch"] for r in adam_rows],
+                     [r["epoch_time_s"] * 1000 for r in adam_rows],
+                     color="tab:blue", linewidth=0.8, alpha=0.7, label="Adam (ms/epoch)")
+        if lbfgs_rows:
+            lx = [adam_epochs + r["epoch"] for r in lbfgs_rows]
+            ax_perf.plot(lx, [r["epoch_time_s"] * 1000 for r in lbfgs_rows],
+                         color="tab:green", linewidth=0.8, alpha=0.9, label="L-BFGS (ms/step)")
+            if has_lbfgs:
+                ax_perf.axvspan(adam_epochs, len(total), alpha=0.08, color="tab:green", zorder=0)
+                ax_perf.axvline(adam_epochs, color="k", linestyle="--", linewidth=0.8, alpha=0.6)
+        ax_perf.set_xlabel("step (Adam epoch | L-BFGS outer step)" if has_lbfgs else "epoch")
+        ax_perf.set_ylabel("time per step (ms)")
+        ax_perf.legend(fontsize=8)
+        ax_perf.grid(True, alpha=0.3)
+
     fig.tight_layout()
     loss_path = os.path.join("plots", f"loss_curves_{run_id}.png")
     fig.savefig(loss_path, dpi=150)
