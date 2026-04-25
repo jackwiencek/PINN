@@ -1,5 +1,5 @@
 import torch
-
+from scipy.special import roots_hermite
 
 class PDEProblem:
     """Base class for PDE definitions. Subclass per equation."""
@@ -80,6 +80,36 @@ class ViscousBurgers1D(PDEProblem):
             {"type": "dirichlet", "x": self.x_min, "value": 0.0},
             {"type": "dirichlet", "x": self.x_max, "value": 0.0},
         ]
+
+    def analytical_solution(self, x, t):
+        # Cole-Hopf + Hermite quadrature on the heat-kernel convolution.
+        # u = -∫sin(π y)·exp(A) e^{-z²} dz  /  ∫exp(A) e^{-z²} dz
+        # where y = x - 2√(νt)·z and A = -cos(π y)/(2πν).
+        # Bessel-series form suffers catastrophic cancellation at x≈0
+        # (sum collapses to ~e^{-c}/I₀(c) ≈ 7e-44); this form does not.
+        # Subtract per-point max(A) before exp for overflow safety.
+        Nq = 50
+        nodes, weights = roots_hermite(Nq)
+
+        dev = x.device
+        z = torch.tensor(nodes,   dtype=torch.float64, device=dev)
+        w = torch.tensor(weights, dtype=torch.float64, device=dev)
+
+        x_f = x.double().squeeze(-1)
+        t_f = t.double().squeeze(-1)
+
+        sqrt_4nut = torch.sqrt(4.0 * self.nu * t_f).unsqueeze(1)        # (M, 1)
+        y = x_f.unsqueeze(1) - z.unsqueeze(0) * sqrt_4nut                # (M, Nq)
+
+        A = -torch.cos(torch.pi * y) / (2.0 * torch.pi * self.nu)
+        A_max = A.max(dim=1, keepdim=True).values
+        expA = torch.exp(A - A_max)
+
+        num = -(w * torch.sin(torch.pi * y) * expA).sum(dim=1)
+        den =  (w * expA).sum(dim=1)
+
+        return (num / den).to(x.dtype).unsqueeze(-1)
+
 
 def compute_loss(model, pde, x_f, t_f, x_ic, t_ic, x_bcs, t_bcs, lambdas=(1.0, 1.0, 1.0)):
     # --- PDE residual ---
