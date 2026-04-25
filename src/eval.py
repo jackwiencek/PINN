@@ -91,7 +91,7 @@ def append_eval_result(name, run_id, max_abs_error, l2_error):
     print(f"appended to {EVALS_CSV}")
 
 
-def plot_evals():
+def plot_evals(names=None, title="Evaluation comparison", out_path=None):
     if not os.path.exists(EVALS_CSV):
         sys.exit(f"no evals CSV found at {EVALS_CSV} — run eval.py --name first")
 
@@ -101,38 +101,50 @@ def plot_evals():
     except ImportError:
         sys.exit("numpy + matplotlib required. run: pip install numpy matplotlib")
 
-    rows = []
+    all_rows = []
     with open(EVALS_CSV, newline="") as f:
         for row in csv.DictReader(f):
-            rows.append({
+            all_rows.append({
                 "name":          row["name"],
                 "max_abs_error": float(row["max_abs_error"]),
                 "l2_error":      float(row["l2_error"]),
             })
 
+    if names is not None:
+        name_set = set(names)
+        # preserve order of names list, pick last occurrence per name
+        by_name = {}
+        for r in all_rows:
+            if r["name"] in name_set:
+                by_name[r["name"]] = r
+        rows = [by_name[n] for n in names if n in by_name]
+    else:
+        rows = all_rows
+
     if not rows:
         sys.exit("evals CSV is empty")
 
-    names     = [r["name"] for r in rows]
+    row_names = [r["name"] for r in rows]
     max_errs  = [r["max_abs_error"] for r in rows]
     l2_errs   = [r["l2_error"] for r in rows]
-    x         = np.arange(len(names))
+    x         = np.arange(len(rows))
     width     = 0.35
 
-    fig, ax = plt.subplots(figsize=(max(6, len(names) * 0.9 + 2), 5))
+    fig, ax = plt.subplots(figsize=(max(6, len(rows) * 0.9 + 2), 5))
     ax.bar(x - width / 2, max_errs, width, label="max abs error", color="tab:red",   alpha=0.8)
     ax.bar(x + width / 2, l2_errs,  width, label="L2 error",      color="tab:blue",  alpha=0.8)
     ax.set_yscale("log")
     ax.set_xticks(x)
-    ax.set_xticklabels(names, rotation=30, ha="right")
+    ax.set_xticklabels(row_names, rotation=30, ha="right")
     ax.set_ylabel("error (log scale)")
-    ax.set_title("Evaluation comparison")
+    ax.set_title(title)
     ax.legend()
     ax.grid(True, axis="y", alpha=0.3)
     fig.tight_layout()
 
     os.makedirs("plots", exist_ok=True)
-    out = os.path.join("plots", "evals_comparison.png")
+    out = out_path or os.path.join("plots", "evals_comparison.png")
+    os.makedirs(os.path.dirname(out), exist_ok=True)
     fig.savefig(out, dpi=150)
     plt.close(fig)
     print(f"saved {out}")

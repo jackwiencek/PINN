@@ -72,6 +72,45 @@ def plot_perf_standalone(perf_rows, run_id):
     print(f"saved {out}")
 
 
+def plot_loss_curves_to_path(bundle, label, out_path):
+    """Single-run loss curve: total + PDE + IC + BC, Adam/L-BFGS boundary. No perf subplot."""
+    import matplotlib.pyplot as plt
+
+    total    = bundle["total_loss"]
+    pde_loss = bundle["pde_loss"]
+    ic       = bundle["ic_loss"]
+    bc       = bundle["bc_loss"]
+    epochs_x = range(len(total))
+
+    adam_epochs  = bundle.get("adam_epochs", bundle.get("epochs", len(total)))
+    lbfgs_epochs = bundle.get("lbfgs_epochs", 0)
+    has_lbfgs    = lbfgs_epochs > 0 and adam_epochs < len(total)
+
+    fig, ax = plt.subplots(figsize=(8, 5))
+    ax.semilogy(epochs_x, total,    label="total", linewidth=1.5)
+    ax.semilogy(epochs_x, pde_loss, label="PDE",   alpha=0.7)
+    ax.semilogy(epochs_x, ic,       label="IC",    alpha=0.7)
+    ax.semilogy(epochs_x, bc,       label="BC",    alpha=0.7)
+    if has_lbfgs:
+        ax.axvspan(adam_epochs, len(total), alpha=0.08, color="tab:green", zorder=0)
+        ax.axvline(adam_epochs, color="k", linestyle="--", linewidth=0.8, alpha=0.6)
+        ymin, ymax = ax.get_ylim()
+        y_text = ymax / (ymax / ymin) ** 0.05
+        ax.text(adam_epochs * 0.5, y_text, "Adam",   ha="center", va="top", fontsize=9, alpha=0.7)
+        ax.text((adam_epochs + len(total)) / 2, y_text, "L-BFGS", ha="center", va="top", fontsize=9, alpha=0.7)
+    ax.set_xlabel("step (Adam epoch | L-BFGS outer step)" if has_lbfgs else "epoch")
+    ax.set_ylabel("loss (log scale)")
+    ax.set_title(f"Loss curves — {label}")
+    ax.legend()
+    ax.grid(True, which="both", alpha=0.3)
+    fig.tight_layout()
+
+    os.makedirs(os.path.dirname(out_path), exist_ok=True)
+    fig.savefig(out_path, dpi=150)
+    plt.close(fig)
+    print(f"saved {out_path}")
+
+
 def main():
     parser = argparse.ArgumentParser(description="Plot PINN training run.")
     parser.add_argument(
