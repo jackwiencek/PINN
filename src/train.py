@@ -15,9 +15,12 @@ def train(
     use_resampling: bool = True,
     run_name: str = "baseline",
     use_checkpoint: bool = False,
+    num_threads: int = 8,
 ):
+    torch.set_num_threads(num_threads)
+    torch.set_num_interop_threads(1)
     device = "cuda" if torch.cuda.is_available() else "cpu"
-    print(f"[{run_name}] device: {device}")
+    print(f"[{run_name}] device: {device}  threads: {num_threads}")
 
     if pde_type == "heat":
         pde = HeatEquation1D()
@@ -34,7 +37,7 @@ def train(
     lbfgs_tol_grad = 1e-7
     lbfgs_tol_change = 1e-9
 
-    NUM_CORES = 1
+    NUM_CORES = num_threads
 
     run_id = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
     os.makedirs("logs", exist_ok=True)
