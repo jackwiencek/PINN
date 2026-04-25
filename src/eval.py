@@ -1,4 +1,6 @@
 import argparse
+import csv
+import datetime
 import glob
 import os
 import sys
@@ -6,6 +8,9 @@ import torch
 
 from model import PINN
 from physics import HeatEquation1D, ViscousBurgers1D
+
+EVALS_CSV = os.path.join("logs", "evals.csv")
+EVALS_FIELDNAMES = ["name", "timestamp", "run_id", "max_abs_error", "l2_error"]
 
 
 def evaluate(model, pde, device="cpu", grid=100):
@@ -69,6 +74,70 @@ def build_pde_from_bundle(bundle):
     )
 
 
+def append_eval_result(name, run_id, max_abs_error, l2_error):
+    os.makedirs("logs", exist_ok=True)
+    write_header = not os.path.exists(EVALS_CSV)
+    with open(EVALS_CSV, "a", newline="") as f:
+        writer = csv.DictWriter(f, fieldnames=EVALS_FIELDNAMES)
+        if write_header:
+            writer.writeheader()
+        writer.writerow({
+            "name": name,
+            "timestamp": datetime.datetime.now().strftime("%Y-%m-%dT%H:%M:%S"),
+            "run_id": run_id,
+            "max_abs_error": f"{max_abs_error:.6e}",
+            "l2_error": f"{l2_error:.6e}",
+        })
+    print(f"appended to {EVALS_CSV}")
+
+
+def plot_evals():
+    if not os.path.exists(EVALS_CSV):
+        sys.exit(f"no evals CSV found at {EVALS_CSV} — run eval.py --name first")
+
+    try:
+        import matplotlib.pyplot as plt
+        import numpy as np
+    except ImportError:
+        sys.exit("numpy + matplotlib required. run: pip install numpy matplotlib")
+
+    rows = []
+    with open(EVALS_CSV, newline="") as f:
+        for row in csv.DictReader(f):
+            rows.append({
+                "name":          row["name"],
+                "max_abs_error": float(row["max_abs_error"]),
+                "l2_error":      float(row["l2_error"]),
+            })
+
+    if not rows:
+        sys.exit("evals CSV is empty")
+
+    names     = [r["name"] for r in rows]
+    max_errs  = [r["max_abs_error"] for r in rows]
+    l2_errs   = [r["l2_error"] for r in rows]
+    x         = np.arange(len(names))
+    width     = 0.35
+
+    fig, ax = plt.subplots(figsize=(max(6, len(names) * 0.9 + 2), 5))
+    ax.bar(x - width / 2, max_errs, width, label="max abs error", color="tab:red",   alpha=0.8)
+    ax.bar(x + width / 2, l2_errs,  width, label="L2 error",      color="tab:blue",  alpha=0.8)
+    ax.set_yscale("log")
+    ax.set_xticks(x)
+    ax.set_xticklabels(names, rotation=30, ha="right")
+    ax.set_ylabel("error (log scale)")
+    ax.set_title("Evaluation comparison")
+    ax.legend()
+    ax.grid(True, axis="y", alpha=0.3)
+    fig.tight_layout()
+
+    os.makedirs("plots", exist_ok=True)
+    out = os.path.join("plots", "evals_comparison.png")
+    fig.savefig(out, dpi=150)
+    plt.close(fig)
+    print(f"saved {out}")
+
+
 def main():
     parser = argparse.ArgumentParser(description="Evaluate a saved PINN run.")
     parser.add_argument(
@@ -83,10 +152,28 @@ def main():
         default=100,
         help="Eval grid resolution per axis (default 100).",
     )
+    parser.add_argument(
+        "--name",
+        default=None,
+        help="Label for this evaluation (required to log results to evals.csv).",
+    )
+    parser.add_argument(
+        "--plot",
+        action="store_true",
+        help="Plot evals.csv comparison bar chart instead of running evaluation.",
+    )
     args = parser.parse_args()
+
+    if args.plot:
+        plot_evals()
+        return
+
+    if args.name is None:
+        sys.exit("--name is required. e.g.: python eval.py --name baseline")
 
     run_path = resolve_run_path(args.run)
     bundle = load_run(run_path)
+    run_id = bundle.get("run_id", os.path.splitext(os.path.basename(run_path))[0].replace("run_", ""))
 
     model = PINN(**bundle["model_config"])
     model.load_state_dict(bundle["model_state"])
@@ -97,8 +184,9 @@ def main():
     if "max_abs_error" in result:
         print(f"max abs error: {result['max_abs_error']:.4e}")
         print(f"L2 error:      {result['l2_error']:.4e}")
+        append_eval_result(args.name, run_id, result["max_abs_error"], result["l2_error"])
     else:
-        print("no analytical solution — prediction only")
+        print("no analytical solution — prediction only, nothing logged")
 
 
 if __name__ == "__main__":
