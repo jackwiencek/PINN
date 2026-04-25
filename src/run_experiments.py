@@ -10,6 +10,8 @@ import torch
 
 sys.path.insert(0, os.path.dirname(__file__))
 
+torch.set_num_interop_threads(1)
+
 from train import train
 from plot import plot_loss_curves_to_path
 from eval import plot_evals

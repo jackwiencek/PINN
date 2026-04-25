@@ -18,7 +18,6 @@ def train(
     num_threads: int = 8,
 ):
     torch.set_num_threads(num_threads)
-    torch.set_num_interop_threads(1)
     device = "cuda" if torch.cuda.is_available() else "cpu"
     print(f"[{run_name}] device: {device}  threads: {num_threads}")
 
@@ -225,6 +224,7 @@ def train(
 
 
 def main():
+    torch.set_num_interop_threads(1)
     train(
         pde_type="burgers",
         use_lbfgs=True,
