@@ -38,7 +38,7 @@ def train(
 
     NUM_CORES = num_threads
 
-    run_id = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+    run_id = f"{run_name}_{datetime.datetime.now().strftime('%H%M%S')}"
     os.makedirs("logs", exist_ok=True)
     perf_csv_path = os.path.join("logs", f"perf_{run_id}.csv")
     _perf_file = open(perf_csv_path, "w", newline="")
