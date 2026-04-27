@@ -2,35 +2,35 @@ include make_common
 
 .PHONY: all obj clean
 
-OBJS = $(OBJDIR)/model.obj \
-       $(OBJDIR)/physics.obj \
-       $(OBJDIR)/eval.obj \
-       $(OBJDIR)/eval_main.obj
+MODEL_OBJ   := $(OBJDIR)/model.o
+PHYSICS_OBJ := $(OBJDIR)/physics.o
+EVAL_OBJ    := $(OBJDIR)/eval.o
+MAIN_OBJ    := $(OBJDIR)/eval_main.o
 
-EXE  = $(BINDIR)/pinn_eval.exe
+OBJS = $(MODEL_OBJ) $(PHYSICS_OBJ) $(EVAL_OBJ) $(MAIN_OBJ)
+EXE  = $(BINDIR)/pinn_eval
 
 all: $(OBJDIR) $(BINDIR) $(EXE)
 	@echo built $(EXE)
 
-# Compile only eval.obj (quick syntax check)
-obj: $(OBJDIR) $(OBJDIR)/eval.obj
-	@echo eval.obj ready
+obj: $(OBJDIR) $(EVAL_OBJ)
+	@echo eval.o ready
 
-$(OBJDIR)/model.obj: src/model.cpp include/model.hpp
-	$(CXX) $(CXXFLAGS) /c src/model.cpp /Fo$(OBJDIR)/model.obj
+$(MODEL_OBJ): src/model.cpp include/model.hpp
+	$(CXX) $(CXXFLAGS) -c $< -o $@
 
-$(OBJDIR)/physics.obj: src/physics.cpp include/physics.hpp include/model.hpp \
-                        third_party/hermite_nodes_50.hpp
-	$(CXX) $(CXXFLAGS) /c src/physics.cpp /Fo$(OBJDIR)/physics.obj
+$(PHYSICS_OBJ): src/physics.cpp include/physics.hpp include/model.hpp \
+                 third_party/hermite_nodes_50.hpp
+	$(CXX) $(CXXFLAGS) -c $< -o $@
 
-$(OBJDIR)/eval.obj: src/eval.cpp include/eval.hpp include/model.hpp include/physics.hpp
-	$(CXX) $(CXXFLAGS) /c src/eval.cpp /Fo$(OBJDIR)/eval.obj
+$(EVAL_OBJ): src/eval.cpp include/eval.hpp include/model.hpp include/physics.hpp
+	$(CXX) $(CXXFLAGS) -c $< -o $@
 
-$(OBJDIR)/eval_main.obj: src/eval_main.cpp include/eval.hpp
-	$(CXX) $(CXXFLAGS) /c src/eval_main.cpp /Fo$(OBJDIR)/eval_main.obj
+$(MAIN_OBJ): src/eval_main.cpp include/eval.hpp
+	$(CXX) $(CXXFLAGS) -c $< -o $@
 
 $(EXE): $(OBJS)
-	$(CXX) $(CXXFLAGS) $(OBJS) /Fe$(EXE) /link $(LIBS)
+	$(CXX) $(OBJS) -o $@ $(LFLAGS)
 
 clean:
-	rm -f $(OBJDIR)/eval.obj $(OBJDIR)/eval_main.obj $(EXE)
+	rm -f $(EVAL_OBJ) $(MAIN_OBJ) $(EXE)

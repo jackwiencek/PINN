@@ -2,13 +2,13 @@ include make_common
 
 .PHONY: all clean
 
-OBJ = $(OBJDIR)/sampling.obj
+OBJ = $(OBJDIR)/sampling.o
 
 all: $(OBJDIR) $(OBJ)
-	@echo sampling.obj ready
+	@echo sampling.o ready
 
-$(OBJDIR)/sampling.obj: src/sampling.cpp include/sampling.hpp include/physics.hpp
-	$(CXX) $(CXXFLAGS) /c src/sampling.cpp /Fo$(OBJDIR)/sampling.obj
+$(OBJ): src/sampling.cpp include/sampling.hpp include/physics.hpp
+	$(CXX) $(CXXFLAGS) -c $< -o $@
 
 clean:
-	rm -f $(OBJDIR)/sampling.obj
+	rm -f $(OBJ)

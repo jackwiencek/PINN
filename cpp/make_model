@@ -2,13 +2,13 @@ include make_common
 
 .PHONY: all clean
 
-OBJ = $(OBJDIR)/model.obj
+OBJ = $(OBJDIR)/model.o
 
 all: $(OBJDIR) $(OBJ)
-	@echo model.obj ready
+	@echo model.o ready
 
-$(OBJDIR)/model.obj: src/model.cpp include/model.hpp
-	$(CXX) $(CXXFLAGS) /c src/model.cpp /Fo$(OBJDIR)/model.obj
+$(OBJ): src/model.cpp include/model.hpp
+	$(CXX) $(CXXFLAGS) -c $< -o $@
 
 clean:
-	rm -f $(OBJDIR)/model.obj
+	rm -f $(OBJ)

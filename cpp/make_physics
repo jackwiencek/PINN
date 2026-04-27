@@ -2,14 +2,14 @@ include make_common
 
 .PHONY: all clean
 
-OBJ = $(OBJDIR)/physics.obj
+OBJ = $(OBJDIR)/physics.o
 
 all: $(OBJDIR) $(OBJ)
-	@echo physics.obj ready
+	@echo physics.o ready
 
-$(OBJDIR)/physics.obj: src/physics.cpp include/physics.hpp include/model.hpp \
-                        third_party/hermite_nodes_50.hpp
-	$(CXX) $(CXXFLAGS) /c src/physics.cpp /Fo$(OBJDIR)/physics.obj
+$(OBJ): src/physics.cpp include/physics.hpp include/model.hpp \
+         third_party/hermite_nodes_50.hpp
+	$(CXX) $(CXXFLAGS) -c $< -o $@
 
 clean:
-	rm -f $(OBJDIR)/physics.obj
+	rm -f $(OBJ)

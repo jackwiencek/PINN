@@ -2,40 +2,40 @@ include make_common
 
 .PHONY: all clean
 
-OBJS = $(OBJDIR)/model.obj \
-       $(OBJDIR)/physics.obj \
-       $(OBJDIR)/sampling.obj \
-       $(OBJDIR)/eval.obj \
-       $(OBJDIR)/train.obj \
-       $(OBJDIR)/run_experiments.obj
+OBJS = $(OBJDIR)/model.o \
+       $(OBJDIR)/physics.o \
+       $(OBJDIR)/sampling.o \
+       $(OBJDIR)/eval.o \
+       $(OBJDIR)/train.o \
+       $(OBJDIR)/run_experiments.o
 
-EXE  = $(BINDIR)/pinn_experiments.exe
+EXE = $(BINDIR)/pinn_experiments
 
 all: $(OBJDIR) $(BINDIR) $(EXE)
 	@echo built $(EXE)
 
-$(OBJDIR)/model.obj: src/model.cpp include/model.hpp
-	$(CXX) $(CXXFLAGS) /c src/model.cpp /Fo$(OBJDIR)/model.obj
+$(OBJDIR)/model.o: src/model.cpp include/model.hpp
+	$(CXX) $(CXXFLAGS) -c $< -o $@
 
-$(OBJDIR)/physics.obj: src/physics.cpp include/physics.hpp include/model.hpp \
-                        third_party/hermite_nodes_50.hpp
-	$(CXX) $(CXXFLAGS) /c src/physics.cpp /Fo$(OBJDIR)/physics.obj
+$(OBJDIR)/physics.o: src/physics.cpp include/physics.hpp include/model.hpp \
+                      third_party/hermite_nodes_50.hpp
+	$(CXX) $(CXXFLAGS) -c $< -o $@
 
-$(OBJDIR)/sampling.obj: src/sampling.cpp include/sampling.hpp include/physics.hpp
-	$(CXX) $(CXXFLAGS) /c src/sampling.cpp /Fo$(OBJDIR)/sampling.obj
+$(OBJDIR)/sampling.o: src/sampling.cpp include/sampling.hpp include/physics.hpp
+	$(CXX) $(CXXFLAGS) -c $< -o $@
 
-$(OBJDIR)/eval.obj: src/eval.cpp include/eval.hpp include/model.hpp include/physics.hpp
-	$(CXX) $(CXXFLAGS) /c src/eval.cpp /Fo$(OBJDIR)/eval.obj
+$(OBJDIR)/eval.o: src/eval.cpp include/eval.hpp include/model.hpp include/physics.hpp
+	$(CXX) $(CXXFLAGS) -c $< -o $@
 
-$(OBJDIR)/train.obj: src/train.cpp include/train.hpp include/model.hpp \
-                     include/physics.hpp include/sampling.hpp include/eval.hpp
-	$(CXX) $(CXXFLAGS) /c src/train.cpp /Fo$(OBJDIR)/train.obj
+$(OBJDIR)/train.o: src/train.cpp include/train.hpp include/model.hpp \
+                    include/physics.hpp include/sampling.hpp include/eval.hpp
+	$(CXX) $(CXXFLAGS) -c $< -o $@
 
-$(OBJDIR)/run_experiments.obj: src/run_experiments.cpp include/train.hpp
-	$(CXX) $(CXXFLAGS) /c src/run_experiments.cpp /Fo$(OBJDIR)/run_experiments.obj
+$(OBJDIR)/run_experiments.o: src/run_experiments.cpp include/train.hpp
+	$(CXX) $(CXXFLAGS) -c $< -o $@
 
 $(EXE): $(OBJS)
-	$(CXX) $(CXXFLAGS) $(OBJS) /Fe$(EXE) /link $(LIBS)
+	$(CXX) $(OBJS) -o $@ $(LFLAGS)
 
 clean:
 	rm -f $(OBJS) $(EXE)
