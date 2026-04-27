@@ -1,0 +1,14 @@
+include make_common
+
+.PHONY: all clean
+
+OBJ = $(OBJDIR)/sampling.obj
+
+all: $(OBJDIR) $(OBJ)
+	@echo sampling.obj ready
+
+$(OBJDIR)/sampling.obj: src/sampling.cpp include/sampling.hpp include/physics.hpp
+	$(CXX) $(CXXFLAGS) /c src/sampling.cpp /Fo$(OBJDIR)/sampling.obj
+
+clean:
+	rm -f $(OBJDIR)/sampling.obj

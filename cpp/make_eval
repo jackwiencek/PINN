@@ -1,0 +1,36 @@
+include make_common
+
+.PHONY: all obj clean
+
+OBJS = $(OBJDIR)/model.obj \
+       $(OBJDIR)/physics.obj \
+       $(OBJDIR)/eval.obj \
+       $(OBJDIR)/eval_main.obj
+
+EXE  = $(BINDIR)/pinn_eval.exe
+
+all: $(OBJDIR) $(BINDIR) $(EXE)
+	@echo built $(EXE)
+
+# Compile only eval.obj (quick syntax check)
+obj: $(OBJDIR) $(OBJDIR)/eval.obj
+	@echo eval.obj ready
+
+$(OBJDIR)/model.obj: src/model.cpp include/model.hpp
+	$(CXX) $(CXXFLAGS) /c src/model.cpp /Fo$(OBJDIR)/model.obj
+
+$(OBJDIR)/physics.obj: src/physics.cpp include/physics.hpp include/model.hpp \
+                        third_party/hermite_nodes_50.hpp
+	$(CXX) $(CXXFLAGS) /c src/physics.cpp /Fo$(OBJDIR)/physics.obj
+
+$(OBJDIR)/eval.obj: src/eval.cpp include/eval.hpp include/model.hpp include/physics.hpp
+	$(CXX) $(CXXFLAGS) /c src/eval.cpp /Fo$(OBJDIR)/eval.obj
+
+$(OBJDIR)/eval_main.obj: src/eval_main.cpp include/eval.hpp
+	$(CXX) $(CXXFLAGS) /c src/eval_main.cpp /Fo$(OBJDIR)/eval_main.obj
+
+$(EXE): $(OBJS)
+	$(CXX) $(CXXFLAGS) $(OBJS) /Fe$(EXE) /link $(LIBS)
+
+clean:
+	rm -f $(OBJDIR)/eval.obj $(OBJDIR)/eval_main.obj $(EXE)

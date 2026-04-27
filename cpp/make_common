@@ -1,0 +1,24 @@
+# make_common — included by all module makefiles.
+# Override LIBTORCH on the command line:
+#   make -f make_model LIBTORCH=D:/mylibtorch
+
+LIBTORCH ?= C:/libs/libtorch
+OBJDIR    = build/obj
+BINDIR    = build/Release
+
+CXX       = cl
+
+# cl.exe flags
+CXXFLAGS  = /std:c++17 /EHsc /MD /O2 /W3 /nologo \
+             /D_USE_MATH_DEFINES /DNOMINMAX /D_CRT_SECURE_NO_WARNINGS \
+             /I"$(LIBTORCH)/include" \
+             /I"$(LIBTORCH)/include/torch/csrc/api/include" \
+             /Iinclude \
+             /Ithird_party
+
+LIBS      = "$(LIBTORCH)/lib/torch.lib" \
+            "$(LIBTORCH)/lib/torch_cpu.lib" \
+            "$(LIBTORCH)/lib/c10.lib"
+
+$(OBJDIR) $(BINDIR):
+	mkdir -p $@

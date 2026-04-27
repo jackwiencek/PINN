@@ -1,0 +1,33 @@
+include make_common
+
+.PHONY: all obj clean
+
+# train.cpp is a library module (no main). Default target compiles it.
+# Use make_experiments to build the full executable.
+
+OBJ = $(OBJDIR)/train.obj
+
+all: obj
+
+obj: $(OBJDIR) $(OBJ)
+	@echo train.obj ready
+
+$(OBJDIR)/model.obj: src/model.cpp include/model.hpp
+	$(CXX) $(CXXFLAGS) /c src/model.cpp /Fo$(OBJDIR)/model.obj
+
+$(OBJDIR)/physics.obj: src/physics.cpp include/physics.hpp include/model.hpp \
+                        third_party/hermite_nodes_50.hpp
+	$(CXX) $(CXXFLAGS) /c src/physics.cpp /Fo$(OBJDIR)/physics.obj
+
+$(OBJDIR)/sampling.obj: src/sampling.cpp include/sampling.hpp include/physics.hpp
+	$(CXX) $(CXXFLAGS) /c src/sampling.cpp /Fo$(OBJDIR)/sampling.obj
+
+$(OBJDIR)/eval.obj: src/eval.cpp include/eval.hpp include/model.hpp include/physics.hpp
+	$(CXX) $(CXXFLAGS) /c src/eval.cpp /Fo$(OBJDIR)/eval.obj
+
+$(OBJDIR)/train.obj: src/train.cpp include/train.hpp include/model.hpp \
+                     include/physics.hpp include/sampling.hpp include/eval.hpp
+	$(CXX) $(CXXFLAGS) /c src/train.cpp /Fo$(OBJDIR)/train.obj
+
+clean:
+	rm -f $(OBJDIR)/train.obj

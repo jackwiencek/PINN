@@ -1,0 +1,14 @@
+include make_common
+
+.PHONY: all clean
+
+OBJ = $(OBJDIR)/model.obj
+
+all: $(OBJDIR) $(OBJ)
+	@echo model.obj ready
+
+$(OBJDIR)/model.obj: src/model.cpp include/model.hpp
+	$(CXX) $(CXXFLAGS) /c src/model.cpp /Fo$(OBJDIR)/model.obj
+
+clean:
+	rm -f $(OBJDIR)/model.obj
