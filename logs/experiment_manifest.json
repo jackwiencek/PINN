@@ -1,0 +1,34 @@
+{
+  "heat_adam": {
+    "run_id": "heat_adam_181249",
+    "run_path": "runs/run_heat_adam_181249.pt"
+  },
+  "heat_adam_resample": {
+    "run_id": "heat_adam_resample_181555",
+    "run_path": "runs/run_heat_adam_resample_181555.pt"
+  },
+  "heat_adam_lbfgs": {
+    "run_id": "heat_adam_lbfgs_181854",
+    "run_path": "runs/run_heat_adam_lbfgs_181854.pt"
+  },
+  "heat_adam_resample_lbfgs": {
+    "run_id": "heat_adam_resample_lbfgs_182203",
+    "run_path": "runs/run_heat_adam_resample_lbfgs_182203.pt"
+  },
+  "burgers_adam": {
+    "run_id": "burgers_adam_182513",
+    "run_path": "runs/run_burgers_adam_182513.pt"
+  },
+  "burgers_adam_resample": {
+    "run_id": "burgers_adam_resample_182800",
+    "run_path": "runs/run_burgers_adam_resample_182800.pt"
+  },
+  "burgers_adam_lbfgs": {
+    "run_id": "burgers_adam_lbfgs_183046",
+    "run_path": "runs/run_burgers_adam_lbfgs_183046.pt"
+  },
+  "burgers_adam_resample_lbfgs": {
+    "run_id": "burgers_adam_resample_lbfgs_183552",
+    "run_path": "runs/run_burgers_adam_resample_lbfgs_183552.pt"
+  }
+}
