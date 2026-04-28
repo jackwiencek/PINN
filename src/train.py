@@ -39,8 +39,8 @@ def train(
     NUM_CORES = num_threads
 
     run_id = f"{run_name}_{datetime.datetime.now().strftime('%H%M%S')}"
-    os.makedirs("logs", exist_ok=True)
-    perf_csv_path = os.path.join("logs", f"perf_{run_id}.csv")
+    os.makedirs("py_logs", exist_ok=True)
+    perf_csv_path = os.path.join("py_logs", f"perf_{run_id}.csv")
     _perf_file = open(perf_csv_path, "w", newline="")
     _perf_writer = csv.writer(_perf_file)
     _perf_writer.writerow(["epoch", "phase", "wall_time_s", "epoch_time_s"])

@@ -9,7 +9,7 @@ import torch
 from model import PINN
 from physics import HeatEquation1D, ViscousBurgers1D
 
-EVALS_CSV = os.path.join("logs", "evals.csv")
+EVALS_CSV = os.path.join("py_logs", "evals.csv")
 EVALS_FIELDNAMES = ["name", "timestamp", "run_id", "max_abs_error", "l2_error"]
 
 
@@ -75,7 +75,7 @@ def build_pde_from_bundle(bundle):
 
 
 def append_eval_result(name, run_id, max_abs_error, l2_error):
-    os.makedirs("logs", exist_ok=True)
+    os.makedirs("py_logs", exist_ok=True)
     write_header = not os.path.exists(EVALS_CSV)
     with open(EVALS_CSV, "a", newline="") as f:
         writer = csv.DictWriter(f, fieldnames=EVALS_FIELDNAMES)

@@ -3,58 +3,82 @@ Physics Informed Neural Network
 Forward Problem: 1D Heat Equation and Viscous Burgers Equation
 
 Structure:
-pinn/
+PINN/
 ├── README
+├── .gitignore
+├── ckpt.pt # latest Adam-phase checkpoint (overwritten each run)
 ├── src/
-│   ├── model.py           # PINN class (nn.Module)
-│   ├── physics.py         # PDE residual, BC/IC functions
-│   ├── train.py           # training loop, Adam + L-BFGS
-│   ├── sampling.py        # collocation point generation
-│   ├── eval.py            # error metrics
-│   ├── plot.py            # plotting helpers
-│   └── run_experiments.py # runs all 8 experiment configurations
-├── experiments/
-│   └── 1d_heat.py         # standalone heat equation script
-├── logs/                  # Python run timing logs and eval results
-│   ├── evals.csv
-│   ├── experiment_manifest.json
-│   └── perf_<name>_<time>.csv
-├── plots/                 # generated figures
-├── cpp/                   # C++ port (LibTorch)
-│   ├── include/           # header files
-│   │   ├── model.hpp
-│   │   ├── physics.hpp
-│   │   ├── train.hpp
-│   │   ├── sampling.hpp
-│   │   └── eval.hpp
-│   ├── src/               # implementation files
-│   │   ├── model.cpp
-│   │   ├── physics.cpp
-│   │   ├── train.cpp
-│   │   ├── sampling.cpp
-│   │   ├── eval.cpp
-│   │   ├── eval_main.cpp
-│   │   └── run_experiments.cpp
-│   ├── third_party/
-│   │   └── hermite_nodes_50.hpp
-│   ├── build/
-│   │   ├── bin/           # compiled executables
-│   │   └── obj/           # object files
-│   └── make_experiments   # primary makefile
-├── c_logs/                # C++ run timing logs and eval results
-│   ├── evals.csv
-│   ├── experiment_manifest.json
-│   └── perf_<name>_<time>.csv
-└── c_runs/                # saved C++ model checkpoints (.pt)
+│ ├── model.py # PINN class (nn.Module)
+│ ├── physics.py # PDE residual, BC/IC functions
+│ ├── train.py # training loop, Adam + L-BFGS
+│ ├── sampling.py # collocation point generation
+│ ├── eval.py # error metrics
+│ ├── plot.py # plotting helpers
+│ ├── run*experiments.py # runs all 8 Python experiments, generates all_plots/
+│ └── plot_cpp_experiments.py # generates all C++ graphs into all_plots/
+├── py_logs/ # Python run logs
+│ ├── evals.csv
+│ ├── experiment_manifest.json
+│ └── perf*<name>_<time>.csv # per-epoch timing (8 files)
+├── py_runs/ # Python model checkpoints (.pt)
+├── all_plots/
+│ ├── py_experiments/ # Python experiment graphs
+│ │ ├── <name>\_loss_curves.png
+│ │ ├── heat_errors.png
+│ │ └── burgers_errors.png
+│ └── cpp_experiments/ # C++ experiment graphs
+│   ├── <name>\_loss_curves.png # requires C++ rebuild + re-run, didn't have time to create
+│   ├── heat_errors.png
+│   ├── burgers_errors.png
+│   ├── <name>\_timing.png # 8 per-epoch timing graphs
+│   └── timing_comparison_py_vs_cpp.png
+├── plots1/ - plots6/ # historical single-run plots (loss curves, heatmaps)
+├── cpp/ # C++ port (LibTorch)
+│ ├── CMakeLists.txt # Windows/MSVC build
+│ ├── README.md
+│ ├── make_experiments # Linux/GCC build (primary, used on OSC)
+│ ├── make_common # shared compiler flags
+│ ├── make_model
+│ ├── make_physics
+│ ├── make_sampling
+│ ├── make_train
+│ ├── make_eval
+│ ├── run_osc.sh # OSC job script
+│ ├── include/
+│ │ ├── model.hpp
+│ │ ├── physics.hpp
+│ │ ├── train.hpp
+│ │ ├── sampling.hpp
+│ │ └── eval.hpp
+│ ├── src/
+│ │ ├── model.cpp
+│ │ ├── physics.cpp
+│ │ ├── train.cpp
+│ │ ├── sampling.cpp
+│ │ ├── eval.cpp
+│ │ ├── eval_main.cpp
+│ │ └── run_experiments.cpp
+│ ├── third_party/
+│ │ └── hermite_nodes_50.hpp
+│ └── build/
+│ ├── bin/
+│ │ └── pinn_experiments # compiled executable
+│ └── obj/ # object files
+├── c_logs/ # C++ run logs
+│ ├── evals.csv
+│ ├── experiment_manifest.json
+│ ├── perf_<name>_<time>.csv # per-epoch timing (8 files)
+│ └── loss_<name>\_<time>.csv # per-epoch loss (generated after rebuild)
+└── c_runs/ # C++ model checkpoints (.pt)
 
 ---
 
 Python Training
 
-  cd /PINN
-  python src/run_experiments.py
+cd /PINN
+python src/run_experiments.py
 
-Output: model checkpoints in runs/, timing logs in logs/, eval results in logs/evals.csv
+Output: checkpoints in runs/, logs in py_logs/, plots in all_plots/py_experiments/
 
 ---
 
@@ -62,19 +86,27 @@ C++ Training (LibTorch)
 
 Requirements: GCC 12.3.0, CMake 3.25.2, LibTorch
 
-  module load gcc/12.3.0
-  module load cmake/3.25.2
+module load gcc/12.3.0
+module load cmake/3.25.2
 
-Navigate to the cpp directory:
-
-  cd /PINN/cpp
-
-Build:
-
-  make -f make_experiments LIBTORCH=/fs/scratch/PAS2137/libtorch
+cd /PINN/cpp
+make -f make_experiments LIBTORCH=/fs/scratch/PAS2137/libtorch
 
 Run all 8 experiments:
 
-  build/bin/pinn_experiments
+(If on OSC:
+sinteractive -A PAS2137 -c 32 -t 01:00:00)
 
-Output: model checkpoints in c_runs/, timing logs in c_logs/, eval results in c_logs/evals.csv
+build/bin/pinn_experiments
+
+Output: checkpoints in c*runs/, logs in c_logs/, eval results in c_logs/evals.csv,
+per-epoch loss in c_logs/loss*\*.csv
+
+---
+
+Plotting C++ Results
+
+cd /PINN
+python src/plot_cpp_experiments.py
+
+Output: all_plots/cpp_experiments/ - 8 loss curve graphs (skipped if loss CSVs not yet generated) - 2 error bar charts (heat, burgers) - 8 per-epoch timing graphs - 1 Python vs C++ training time comparison
