@@ -196,7 +196,9 @@ TrainResult train(const std::string& pde_type,
     // -----------------------------------------------------------------------
     fs::create_directories("c_runs");
     std::string run_path = "c_runs/run_" + run_id + ".pt";
-    torch::save(model, run_path);
+    torch::serialize::OutputArchive archive;
+    model.save(archive);
+    archive.save_to(run_path);
     std::cout << "run saved: " << run_path << "\n";
 
     return {run_id, run_path};

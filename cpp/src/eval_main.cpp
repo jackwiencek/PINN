@@ -41,7 +41,9 @@ int main(int argc, char* argv[]) {
 
     PINN model;
     try {
-        torch::load(model, run_path);
+        torch::serialize::InputArchive archive;
+        archive.load_from(run_path);
+        model.load(archive);
         std::cout << "loaded " << run_path << "\n";
     } catch (const std::exception& e) {
         std::cerr << "failed to load model: " << e.what() << "\n";
