@@ -2,5 +2,8 @@
 venv/
 src/__pycache__
 runs/
+# c_runs/
 plots*/
 ckpt.pt
+c_runs copy/
+c_logs copy

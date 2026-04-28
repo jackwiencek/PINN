@@ -1,0 +1,15 @@
+include make_common
+
+.PHONY: all clean
+
+OBJ = $(OBJDIR)/physics.o
+
+all: $(OBJDIR) $(OBJ)
+	@echo physics.o ready
+
+$(OBJ): src/physics.cpp include/physics.hpp include/model.hpp \
+         third_party/hermite_nodes_50.hpp
+	$(CXX) $(CXXFLAGS) -c $< -o $@
+
+clean:
+	rm -f $(OBJ)

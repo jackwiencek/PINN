@@ -1,0 +1,28 @@
+include make_common
+
+.PHONY: all clean
+
+OBJ = $(OBJDIR)/train.o
+
+all: $(OBJDIR) $(OBJ)
+	@echo train.o ready
+
+$(OBJDIR)/model.o: src/model.cpp include/model.hpp
+	$(CXX) $(CXXFLAGS) -c $< -o $@
+
+$(OBJDIR)/physics.o: src/physics.cpp include/physics.hpp include/model.hpp \
+                      third_party/hermite_nodes_50.hpp
+	$(CXX) $(CXXFLAGS) -c $< -o $@
+
+$(OBJDIR)/sampling.o: src/sampling.cpp include/sampling.hpp include/physics.hpp
+	$(CXX) $(CXXFLAGS) -c $< -o $@
+
+$(OBJDIR)/eval.o: src/eval.cpp include/eval.hpp include/model.hpp include/physics.hpp
+	$(CXX) $(CXXFLAGS) -c $< -o $@
+
+$(OBJ): src/train.cpp include/train.hpp include/model.hpp \
+         include/physics.hpp include/sampling.hpp include/eval.hpp
+	$(CXX) $(CXXFLAGS) -c $< -o $@
+
+clean:
+	rm -f $(OBJ)

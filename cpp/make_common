@@ -1,0 +1,23 @@
+# make_common — Linux/g++ only.
+# Usage: make -f make_experiments LIBTORCH=/fs/scratch/PAS2137/libtorch
+
+LIBTORCH    ?= /fs/scratch/PAS2137/libtorch
+GLIBCXX_ABI ?= 1
+
+OBJDIR = build/obj
+BINDIR = build/bin
+
+CXX      := g++
+CXXFLAGS := -std=c++17 -O2 -Wall -pthread \
+             -D_GLIBCXX_USE_CXX11_ABI=$(GLIBCXX_ABI) \
+             -I$(LIBTORCH)/include \
+             -I$(LIBTORCH)/include/torch/csrc/api/include \
+             -Iinclude \
+             -Ithird_party
+
+LFLAGS := -L$(LIBTORCH)/lib \
+           -ltorch -ltorch_cpu -lc10 \
+           -Wl,-rpath,$(LIBTORCH)/lib
+
+$(OBJDIR) $(BINDIR):
+	mkdir -p $@

@@ -30,7 +30,7 @@ EXPERIMENTS = [
 HEAT_NAMES    = [e["run_name"] for e in EXPERIMENTS if e["pde_type"] == "heat"]
 BURGERS_NAMES = [e["run_name"] for e in EXPERIMENTS if e["pde_type"] == "burgers"]
 
-PLOTS_DIR = os.path.join("plots", "experiments")
+PLOTS_DIR = os.path.join("all_plots", "py_experiments")
 
 
 def main():
@@ -44,8 +44,8 @@ def main():
         run_id, run_path = train(**cfg, use_checkpoint=False)
         manifest[cfg["run_name"]] = {"run_id": run_id, "run_path": run_path}
 
-    os.makedirs("logs", exist_ok=True)
-    manifest_path = os.path.join("logs", "experiment_manifest.json")
+    os.makedirs("py_logs", exist_ok=True)
+    manifest_path = os.path.join("py_logs", "experiment_manifest.json")
     with open(manifest_path, "w") as f:
         json.dump(manifest, f, indent=2)
     print(f"\nmanifest saved: {manifest_path}")

@@ -1,0 +1,36 @@
+include make_common
+
+.PHONY: all obj clean
+
+MODEL_OBJ   := $(OBJDIR)/model.o
+PHYSICS_OBJ := $(OBJDIR)/physics.o
+EVAL_OBJ    := $(OBJDIR)/eval.o
+MAIN_OBJ    := $(OBJDIR)/eval_main.o
+
+OBJS = $(MODEL_OBJ) $(PHYSICS_OBJ) $(EVAL_OBJ) $(MAIN_OBJ)
+EXE  = $(BINDIR)/pinn_eval
+
+all: $(OBJDIR) $(BINDIR) $(EXE)
+	@echo built $(EXE)
+
+obj: $(OBJDIR) $(EVAL_OBJ)
+	@echo eval.o ready
+
+$(MODEL_OBJ): src/model.cpp include/model.hpp
+	$(CXX) $(CXXFLAGS) -c $< -o $@
+
+$(PHYSICS_OBJ): src/physics.cpp include/physics.hpp include/model.hpp \
+                 third_party/hermite_nodes_50.hpp
+	$(CXX) $(CXXFLAGS) -c $< -o $@
+
+$(EVAL_OBJ): src/eval.cpp include/eval.hpp include/model.hpp include/physics.hpp
+	$(CXX) $(CXXFLAGS) -c $< -o $@
+
+$(MAIN_OBJ): src/eval_main.cpp include/eval.hpp
+	$(CXX) $(CXXFLAGS) -c $< -o $@
+
+$(EXE): $(OBJS)
+	$(CXX) $(OBJS) -o $@ $(LFLAGS)
+
+clean:
+	rm -f $(EVAL_OBJ) $(MAIN_OBJ) $(EXE)

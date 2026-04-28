@@ -1,0 +1,41 @@
+include make_common
+.DEFAULT_GOAL := all
+.PHONY: all clean
+
+OBJS = $(OBJDIR)/model.o \
+       $(OBJDIR)/physics.o \
+       $(OBJDIR)/sampling.o \
+       $(OBJDIR)/eval.o \
+       $(OBJDIR)/train.o \
+       $(OBJDIR)/run_experiments.o
+
+EXE = $(BINDIR)/pinn_experiments
+
+all: $(OBJDIR) $(BINDIR) $(EXE)
+	@echo built $(EXE)
+
+$(OBJDIR)/model.o: src/model.cpp include/model.hpp
+	$(CXX) $(CXXFLAGS) -c $< -o $@
+
+$(OBJDIR)/physics.o: src/physics.cpp include/physics.hpp include/model.hpp \
+                      third_party/hermite_nodes_50.hpp
+	$(CXX) $(CXXFLAGS) -c $< -o $@
+
+$(OBJDIR)/sampling.o: src/sampling.cpp include/sampling.hpp include/physics.hpp
+	$(CXX) $(CXXFLAGS) -c $< -o $@
+
+$(OBJDIR)/eval.o: src/eval.cpp include/eval.hpp include/model.hpp include/physics.hpp
+	$(CXX) $(CXXFLAGS) -c $< -o $@
+
+$(OBJDIR)/train.o: src/train.cpp include/train.hpp include/model.hpp \
+                    include/physics.hpp include/sampling.hpp include/eval.hpp
+	$(CXX) $(CXXFLAGS) -c $< -o $@
+
+$(OBJDIR)/run_experiments.o: src/run_experiments.cpp include/train.hpp
+	$(CXX) $(CXXFLAGS) -c $< -o $@
+
+$(EXE): $(OBJS)
+	$(CXX) $(OBJS) -o $@ $(LFLAGS)
+
+clean:
+	rm -f $(OBJS) $(EXE)
