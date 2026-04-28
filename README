@@ -1,26 +1,80 @@
 Physics Informed Neural Network
 
-Forward Problem
-Solving the 1D Heat Equation
+Forward Problem: 1D Heat Equation and Viscous Burgers Equation
 
-Possible File Structure:
+Structure:
 pinn/
-├── README.md
-├── requirements.txt
+├── README
 ├── src/
-│   ├── model.py               # PINN class (nn.Module)
-│   ├── physics.py             # PDE residual, BC/IC functions
-│   ├── train.py               # training loop, Adam + L-BFGS
-│   ├── sampling.py            # collocation point generation
-│   └── utils.py               # device setup, seeding, plotting helpers
+│   ├── model.py           # PINN class (nn.Module)
+│   ├── physics.py         # PDE residual, BC/IC functions
+│   ├── train.py           # training loop, Adam + L-BFGS
+│   ├── sampling.py        # collocation point generation
+│   ├── eval.py            # error metrics
+│   ├── plot.py            # plotting helpers
+│   └── run_experiments.py # runs all 8 experiment configurations
 ├── experiments/
-│   ├── heat_1d.py             # one script per PDE/run
-│   ├── oscillator.py
-│   └── configs/               # YAML or dict configs per run
-├── results/
-│   ├── checkpoints/           # saved model weights (.pt files)
-│   └── figures/               # generated plots
-├── notebooks/
-│   └── explore.ipynb          # sanity checks, quick viz
-└── cpp/                       # later, for the C++ port
-    └── ...
+│   └── 1d_heat.py         # standalone heat equation script
+├── logs/                  # Python run timing logs and eval results
+│   ├── evals.csv
+│   ├── experiment_manifest.json
+│   └── perf_<name>_<time>.csv
+├── plots/                 # generated figures
+├── cpp/                   # C++ port (LibTorch)
+│   ├── include/           # header files
+│   │   ├── model.hpp
+│   │   ├── physics.hpp
+│   │   ├── train.hpp
+│   │   ├── sampling.hpp
+│   │   └── eval.hpp
+│   ├── src/               # implementation files
+│   │   ├── model.cpp
+│   │   ├── physics.cpp
+│   │   ├── train.cpp
+│   │   ├── sampling.cpp
+│   │   ├── eval.cpp
+│   │   ├── eval_main.cpp
+│   │   └── run_experiments.cpp
+│   ├── third_party/
+│   │   └── hermite_nodes_50.hpp
+│   ├── build/
+│   │   ├── bin/           # compiled executables
+│   │   └── obj/           # object files
+│   └── make_experiments   # primary makefile
+├── c_logs/                # C++ run timing logs and eval results
+│   ├── evals.csv
+│   ├── experiment_manifest.json
+│   └── perf_<name>_<time>.csv
+└── c_runs/                # saved C++ model checkpoints (.pt)
+
+---
+
+Python Training
+
+  cd /PINN
+  python src/run_experiments.py
+
+Output: model checkpoints in runs/, timing logs in logs/, eval results in logs/evals.csv
+
+---
+
+C++ Training (LibTorch)
+
+Requirements: GCC 12.3.0, CMake 3.25.2, LibTorch
+
+  module load gcc/12.3.0
+  module load cmake/3.25.2
+
+Navigate to the cpp directory:
+
+  cd /PINN/cpp
+
+Build:
+
+  make -f make_experiments LIBTORCH=/fs/scratch/PAS2137/libtorch
+
+Run all 8 experiments:
+
+  build/bin/pinn_experiments
+
+Output: model checkpoints in c_runs/, timing logs in c_logs/, eval results in c_logs/evals.csv
