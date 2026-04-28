@@ -75,6 +75,12 @@ TrainResult train(const std::string& pde_type,
     if (!perf_file) throw std::runtime_error("cannot open " + perf_csv);
     perf_file << "epoch,phase,wall_time_s,epoch_time_s\n";
 
+    std::vector<double> total_loss_vec, pde_loss_vec, ic_loss_vec, bc_loss_vec;
+    total_loss_vec.reserve(epochs + lbfgs_epochs);
+    pde_loss_vec.reserve(epochs + lbfgs_epochs);
+    ic_loss_vec.reserve(epochs + lbfgs_epochs);
+    bc_loss_vec.reserve(epochs + lbfgs_epochs);
+
     PINN model;
     model.to(device);
 
@@ -98,6 +104,11 @@ TrainResult train(const std::string& pde_type,
         loss.total.backward();
         adam.step();
         cosine_anneal_lr(adam, base_lr, epoch, epochs);
+
+        total_loss_vec.push_back(loss.total.item<double>());
+        pde_loss_vec.push_back(loss.l_pde.item<double>());
+        ic_loss_vec.push_back(loss.l_ic.item<double>());
+        bc_loss_vec.push_back(loss.l_bc.item<double>());
 
         auto now        = Clock::now();
         double wall     = Seconds(now - t_start).count();
@@ -156,6 +167,11 @@ TrainResult train(const std::string& pde_type,
             };
             lbfgs.step(closure);
 
+            total_loss_vec.push_back(last.t.item<double>());
+            pde_loss_vec.push_back(last.p.item<double>());
+            ic_loss_vec.push_back(last.i.item<double>());
+            bc_loss_vec.push_back(last.b.item<double>());
+
             auto now       = Clock::now();
             double wall    = Seconds(now - t_lbfgs).count();
             double step_t  = Seconds(now - t_lbfgs_step).count();
@@ -192,11 +208,22 @@ TrainResult train(const std::string& pde_type,
     }
 
     // -----------------------------------------------------------------------
-    // Save model state
+    // Save model state + loss history
     // -----------------------------------------------------------------------
     fs::create_directories("c_runs");
     std::string run_path = "c_runs/run_" + run_id + ".pt";
     torch::serialize::OutputArchive archive;
+
+    auto vec_to_tensor = [](const std::vector<double>& v) {
+        return torch::tensor(v, torch::kDouble);
+    };
+    archive.write("total_loss",   vec_to_tensor(total_loss_vec));
+    archive.write("pde_loss",     vec_to_tensor(pde_loss_vec));
+    archive.write("ic_loss",      vec_to_tensor(ic_loss_vec));
+    archive.write("bc_loss",      vec_to_tensor(bc_loss_vec));
+    archive.write("adam_epochs",  torch::tensor((int64_t)epochs));
+    archive.write("lbfgs_epochs", torch::tensor((int64_t)(use_lbfgs ? lbfgs_epochs : 0)));
+
     model.save(archive);
     archive.save_to(run_path);
     std::cout << "run saved: " << run_path << "\n";
