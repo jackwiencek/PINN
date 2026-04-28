@@ -1,0 +1,9 @@
+name,timestamp,run_id,max_abs_error,l2_error
+heat_adam,2026-04-27T20:52:43,heat_adam_204948,3.279384e-03,9.333920e-04
+heat_adam_resample,2026-04-27T20:55:37,heat_adam_resample_205243,5.008648e-03,1.592229e-03
+heat_adam_lbfgs,2026-04-27T20:58:42,heat_adam_lbfgs_205537,4.715053e-03,1.456433e-03
+heat_adam_resample_lbfgs,2026-04-27T21:01:41,heat_adam_resample_lbfgs_205842,2.225997e-03,6.607213e-04
+burgers_adam,2026-04-27T21:04:45,burgers_adam_210141,2.414778e-02,2.940239e-03
+burgers_adam_resample,2026-04-27T21:07:50,burgers_adam_resample_210445,1.739576e+00,1.281237e-01
+burgers_adam_lbfgs,2026-04-27T21:11:01,burgers_adam_lbfgs_210750,1.746106e-02,1.973899e-03
+burgers_adam_resample_lbfgs,2026-04-27T21:15:12,burgers_adam_resample_lbfgs_211101,3.400117e-03,3.490797e-04
