@@ -1,6 +1,7 @@
 .env
 venv/
 src/__pycache__
-runs/
+# runs/
+# c_runs/
 plots*/
 ckpt.pt
