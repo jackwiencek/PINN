@@ -36,8 +36,6 @@ def train(
     lbfgs_tol_grad = 1e-7
     lbfgs_tol_change = 1e-9
 
-    NUM_CORES = num_threads
-
     run_id = f"{run_name}_{datetime.datetime.now().strftime('%H%M%S')}"
     os.makedirs("py_logs", exist_ok=True)
     perf_csv_path = os.path.join("py_logs", f"perf_{run_id}.csv")
@@ -182,17 +180,15 @@ def train(
         max_err = None
         l2_err = None
 
-    os.makedirs("runs", exist_ok=True)
-    run_path = os.path.join("runs", f"run_{run_id}.pt")
+    os.makedirs("py_runs", exist_ok=True)
+    run_path = os.path.join("py_runs", f"run_{run_id}.pt")
 
     pde_class = type(pde).__name__
     if isinstance(pde, HeatEquation1D):
         pde_params = {"L": pde.x_max, "T": pde.t_max, "alpha": pde.alpha}
-        compat_keys = {"L": pde.x_max, "T": pde.t_max, "alpha": pde.alpha}
     else:
         assert isinstance(pde, ViscousBurgers1D)
         pde_params = {"x_min": pde.x_min, "x_max": pde.x_max, "T": pde.t_max, "nu": pde.nu}
-        compat_keys = {"x_min": pde.x_min, "x_max": pde.x_max, "T": pde.t_max, "nu": pde.nu}
 
     torch.save(
         {
@@ -206,14 +202,14 @@ def train(
             "model_config": model_config,
             "pde_class": pde_class,
             "pde_params": pde_params,
-            **compat_keys,
+            **pde_params,
             "epochs": epochs,
             "adam_epochs": epochs,
             "lbfgs_epochs": lbfgs_epochs if use_lbfgs else 0,
             "max_abs_error": max_err,
             "l2_error": l2_err,
             "perf_log": perf_log,
-            "num_cores": NUM_CORES,
+            "num_cores": num_threads,
             "use_lbfgs": use_lbfgs,
             "use_resampling": use_resampling,
         },

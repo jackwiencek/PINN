@@ -44,7 +44,7 @@ EvalResult evaluate(PINN& model, PDEProblem& pde, torch::Device dev, int grid) {
         auto diff = u_pred - u_exact;
         result.u_exact = u_exact;
         result.max_abs_error = diff.abs().max().item<double>();
-        result.l2_error = diff.pow(2).mean().sqrt().item<double>();
+        result.l2_error = (diff.norm() / u_exact.norm()).item<double>();
     }
 
     model.train();

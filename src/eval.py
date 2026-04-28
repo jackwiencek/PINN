@@ -33,7 +33,7 @@ def evaluate(model, pde, device="cpu", grid=100):
         u_exact = pde.analytical_solution(x_flat, t_flat)
         if u_exact is not None:
             max_err = (u_pred - u_exact).abs().max().item()
-            l2_err = ((u_pred - u_exact) ** 2).mean().sqrt().item()
+            l2_err = (torch.norm(u_pred - u_exact) / torch.norm(u_exact)).item()
             result["u_exact"] = u_exact
             result["max_abs_error"] = max_err
             result["l2_error"] = l2_err
@@ -44,9 +44,9 @@ def evaluate(model, pde, device="cpu", grid=100):
 def resolve_run_path(arg):
     if arg is not None:
         return arg
-    candidates = sorted(glob.glob(os.path.join("runs", "run_*.pt")))
+    candidates = sorted(glob.glob(os.path.join("py_runs", "run_*.pt")))
     if not candidates:
-        sys.exit("no runs found in runs/ — pass a path or run train.py first")
+        sys.exit("no runs found in py_runs/ — pass a path or run train.py first")
     return candidates[-1]
 
 

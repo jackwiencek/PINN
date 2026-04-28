@@ -61,13 +61,9 @@ class ViscousBurgers1D(PDEProblem):
 
     def residual(self, model, x, t):
         u = model(x, t)
-        # First order derivatives
         u_t = torch.autograd.grad(u, t, grad_outputs=torch.ones_like(u), create_graph=True)[0]
         u_x = torch.autograd.grad(u, x, grad_outputs=torch.ones_like(u), create_graph=True)[0]
-        # Second order derivative
         u_xx = torch.autograd.grad(u_x, x, grad_outputs=torch.ones_like(u_x), create_graph=True)[0]
-        
-        # Burgers' Equation: u_t + u*u_x - nu*u_xx = 0
         return u_t + u * u_x - self.nu * u_xx
 
     def initial_condition(self, x):

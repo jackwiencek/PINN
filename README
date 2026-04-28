@@ -78,7 +78,7 @@ Python Training
 cd /PINN
 python src/run_experiments.py
 
-Output: checkpoints in runs/, logs in py_logs/, plots in all_plots/py_experiments/
+Output: checkpoints in py_runs/, logs in py_logs/, plots in all_plots/py_experiments/
 
 ---
 
